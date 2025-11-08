@@ -1,0 +1,31 @@
+datasource db {
+  provider = "mysql"
+  url      = "mysql://root:password@localhost:3306/shared_db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  customerId      String
+  items           Json        
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  status          OrderStatus @default(PENDING)
+  paymentId       String?    
+  shippingAddress String?     
+  createdAt       DateTime    @default(now())     
+  updatedAt       DateTime    @updatedAt           
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}

@@ -14,7 +14,7 @@ import { OrderService } from '../services/order.service';
 import { CreateOrderDto } from '../dtos/create-order.dto';
 import { UpdateOrderDto } from '../dtos/update-order.dto';
 import { OrderResponseDto } from '../dtos/order-response.dto';
-import { OrderStatus } from '../entities/order.entity';
+import { OrderStatus } from '@prisma/client'
 
 @Controller('orders')
 export class OrderController {

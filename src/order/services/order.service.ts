@@ -8,8 +8,10 @@ import { OrderRepository } from '../repositories/order.repository';
 import { CreateOrderDto } from '../dtos/create-order.dto';
 import { UpdateOrderDto } from '../dtos/update-order.dto';
 import { OrderResponseDto } from '../dtos/order-response.dto';
-import { Order, OrderStatus } from '../entities/order.entity';
+import { Order, OrderStatus } from '@prisma/client';
 import { KafkaProducerService } from '../../kafka/kafka-producer.service';
+import { instanceToPlain } from 'class-transformer';
+import { OrderItem } from '../interfaces/order-item.interface';
 
 @Injectable()
 export class OrderService {
@@ -19,20 +21,19 @@ export class OrderService {
   ) {}
 
   async createOrder(createOrderDto: CreateOrderDto): Promise<OrderResponseDto> {
-    // Validate order items
     if (!createOrderDto.items || createOrderDto.items.length === 0) {
       throw new BadRequestException('Order must contain at least one item');
     }
 
-    // Create order
     const order = await this.orderRepository.create(createOrderDto);
 
-    // Publish order created event
+    const plainItems = instanceToPlain(createOrderDto.items) as OrderItem[];
+
     await this.kafkaProducer.publishOrderCreated({
       orderId: order.id,
       customerId: order.customerId,
-      totalAmount: order.totalAmount,
-      items: order.items,
+      totalAmount: order.totalAmount.toNumber(),
+      items: plainItems,
       createdAt: order.createdAt,
     });
 
@@ -69,16 +70,14 @@ export class OrderService {
     }
 
     const updatedOrder = await this.orderRepository.update(id, updateOrderDto);
-
     if (!updatedOrder) {
       throw new InternalServerErrorException(`Failed to update order with ID ${id}`);
     }
 
-    // Publish order updated event if status changed
     if (updateOrderDto.status && updateOrderDto.status !== existingOrder.status) {
       await this.kafkaProducer.publishOrderStatusChanged({
         orderId: id,
-        oldStatus: existingOrder!.status,
+        oldStatus: existingOrder.status,
         newStatus: updateOrderDto.status,
         updatedAt: new Date(),
       });
@@ -94,11 +93,10 @@ export class OrderService {
     }
 
     const updatedOrder = await this.orderRepository.updateStatus(id, status);
-
     if (!updatedOrder) {
       throw new InternalServerErrorException(`Failed to update order with ID ${id}`);
     }
-    // Publish status change event
+
     await this.kafkaProducer.publishOrderStatusChanged({
       orderId: id,
       oldStatus: existingOrder.status,
@@ -115,7 +113,6 @@ export class OrderService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    // Only allow deletion if order is pending
     if (order.status !== OrderStatus.PENDING) {
       throw new BadRequestException('Only pending orders can be deleted');
     }
@@ -125,7 +122,6 @@ export class OrderService {
       throw new BadRequestException('Failed to delete order');
     }
 
-    // Publish order deleted event
     await this.kafkaProducer.publishOrderDeleted({
       orderId: id,
       customerId: order.customerId,
@@ -152,14 +148,18 @@ export class OrderService {
   }
 
   private mapToResponseDto(order: Order): OrderResponseDto {
+    const items: OrderItem[] = Array.isArray(order.items)
+      ? (order.items as unknown as OrderItem[])
+      : [];
+
     return {
       id: order.id,
       customerId: order.customerId,
-      items: order.items,
-      totalAmount: order.totalAmount,
+      items,
+      totalAmount: order.totalAmount.toNumber(),
       status: order.status,
-      paymentId: order.paymentId,
-      shippingAddress: order.shippingAddress,
+      paymentId: order.paymentId ?? undefined,
+      shippingAddress: order.shippingAddress ?? undefined,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     };

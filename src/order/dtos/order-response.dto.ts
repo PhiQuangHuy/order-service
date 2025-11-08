@@ -1,4 +1,5 @@
-import { OrderStatus, OrderItem } from '../entities/order.entity';
+import { OrderItem } from '../interfaces/order-item.interface';
+import { OrderStatus } from '@prisma/client';
 
 export class OrderResponseDto {
   id: string;

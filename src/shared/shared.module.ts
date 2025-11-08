@@ -1,15 +1,11 @@
-// src/shared/shared.module.ts
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { Order } from 'src/order/entities/order.entity';
 import { OrderRepository } from 'src/order/repositories/order.repository';
 import { OrderService } from 'src/order/services/order.service';
 import { KafkaProducerService } from 'src/kafka/kafka-producer.service';
+import { PrismaService } from 'src/prisma/services/prisma.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order])],
-  providers: [OrderService, OrderRepository, KafkaProducerService],
-  exports: [OrderService, KafkaProducerService, TypeOrmModule],
+  providers: [OrderService, OrderRepository, KafkaProducerService, PrismaService],
+  exports: [OrderService, KafkaProducerService, PrismaService],
 })
 export class SharedModule {}
