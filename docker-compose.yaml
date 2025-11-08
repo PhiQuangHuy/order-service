@@ -45,20 +45,41 @@ services:
       timeout: 5s
       retries: 5
 
-  shared-mysql:
+  order-mysql:
     image: mysql:8.0
-    container_name: shared-mysql
+    container_name: order-mysql
     restart: unless-stopped
     ports:
-      - '3306:3306' # exposed for DBeaver
+      - '3307:3306'                 # Host:3307 → Container:3306
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: shared_db
+      MYSQL_DATABASE: order_db
       MYSQL_USER: appuser
       MYSQL_PASSWORD: apppass
     volumes:
-      - shared-mysql-data:/var/lib/mysql
-      - ./init-sql/init.sql:/docker-entrypoint-initdb.d/init.sql # optional shared init
+      - order-mysql-data:/var/lib/mysql
+      - ./init-sql/order-init.sql:/docker-entrypoint-initdb.d/01-order-init.sql
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      timeout: 5s
+      retries: 10
+
+  payment-mysql:
+    image: mysql:8.0
+    container_name: payment-mysql
+    restart: unless-stopped
+    ports:
+      - '3308:3306'                 # Host:3308 → Container:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: payment_db
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppass
+    volumes:
+      - payment-mysql-data:/var/lib/mysql
+      - ./init-sql/payment-init.sql:/docker-entrypoint-initdb.d/01-payment-init.sql
     networks:
       - microservices-network
     healthcheck:
@@ -92,20 +113,6 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    networks:
-      - microservices-network
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin:latest
-    container_name: phpmyadmin
-    ports:
-      - '8081:80'
-    environment:
-      PMA_HOST: shared-mysql
-      PMA_USER: root
-      PMA_PASSWORD: password
-    depends_on:
-      - shared-mysql
     networks:
       - microservices-network
 
@@ -153,7 +160,8 @@ volumes:
   zookeeper-data:
   zookeeper-logs:
   kafka-data:
-  shared-mysql-data:
+  order-mysql-data:
+  payment-mysql-data:
   redis-data:
   minio-data:
 

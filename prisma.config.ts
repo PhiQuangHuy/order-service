@@ -7,6 +7,6 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    url: "mysql://root:password@localhost:3306/shared_db",
+    url: env('DATABASE_URL'),
   },
 });
