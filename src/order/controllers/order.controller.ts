@@ -15,6 +15,8 @@ import { CreateOrderDto } from '../dtos/create-order.dto';
 import { UpdateOrderDto } from '../dtos/update-order.dto';
 import { OrderResponseDto } from '../dtos/order-response.dto';
 import { OrderStatus } from '@prisma/client'
+import { GetOrderDto } from '../dtos/get-order.dto';
+import { Paginated } from 'src/common/pagination/interfaces/paginated.interface';
 
 @Controller('orders')
 export class OrderController {
@@ -28,18 +30,9 @@ export class OrderController {
 
   @Get()
   async getAllOrders(
-    @Query('status') status?: OrderStatus,
-    @Query('customerId') customerId?: string,
-  ): Promise<OrderResponseDto[]> {
-    if (status) {
-      return await this.orderService.getOrdersByStatus(status);
-    }
-
-    if (customerId) {
-      return await this.orderService.getOrdersByCustomerId(customerId);
-    }
-
-    return await this.orderService.getAllOrders();
+    @Query() getOrderDto: GetOrderDto
+  ): Promise<Paginated<OrderResponseDto>> {
+    return await this.orderService.getAllOrders(getOrderDto);
   }
 
   @Get(':id')

@@ -12,12 +12,18 @@ import { Order, OrderStatus } from '@prisma/client';
 import { KafkaProducerService } from '../../kafka/kafka-producer.service';
 import { instanceToPlain } from 'class-transformer';
 import { OrderItem } from '../interfaces/order-item.interface';
+import { GetOrderDto } from '../dtos/get-order.dto';
+import { Paginated } from 'src/common/pagination/interfaces/paginated.interface';
+import { PaginationProvider } from 'src/common/pagination/providers/pagination.provider';
+import { PrismaService } from 'src/prisma/services/prisma.service';
 
 @Injectable()
 export class OrderService {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly kafkaProducer: KafkaProducerService,
+    private readonly paginationProvider: PaginationProvider,
+    private readonly prisma: PrismaService,
   ) {}
 
   async createOrder(createOrderDto: CreateOrderDto): Promise<OrderResponseDto> {
@@ -40,27 +46,29 @@ export class OrderService {
     return this.mapToResponseDto(order);
   }
 
-  async getAllOrders(): Promise<OrderResponseDto[]> {
-    const orders = await this.orderRepository.findAll();
-    return orders.map((order) => this.mapToResponseDto(order));
-  }
+  async getAllOrders(dto: GetOrderDto): Promise<Paginated<OrderResponseDto>> {
+    const where: any = {};
+    if (dto.status) where.status = dto.status;
+    if (dto.customerId) where.customerId = dto.customerId;
 
+    const paginated = await this.paginationProvider.paginateQuery<Order>(
+      dto,
+      this.prisma.order,
+      where,
+    );
+
+    // Map to DTO
+    const data = paginated.data.map((order) => this.mapToResponseDto(order));
+
+    return { data, meta: paginated.meta };
+  }
+  
   async getOrderById(id: string): Promise<OrderResponseDto> {
     const order = await this.orderRepository.findById(id);
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
     return this.mapToResponseDto(order);
-  }
-
-  async getOrdersByCustomerId(customerId: string): Promise<OrderResponseDto[]> {
-    const orders = await this.orderRepository.findByCustomerId(customerId);
-    return orders.map((order) => this.mapToResponseDto(order));
-  }
-
-  async getOrdersByStatus(status: OrderStatus): Promise<OrderResponseDto[]> {
-    const orders = await this.orderRepository.findByStatus(status);
-    return orders.map((order) => this.mapToResponseDto(order));
   }
 
   async updateOrder(id: string, updateOrderDto: UpdateOrderDto): Promise<OrderResponseDto> {

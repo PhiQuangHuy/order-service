@@ -1,19 +1,13 @@
-// src/common/pagination/providers/pagination.provider.ts
-import { Inject, Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
 import { PaginationQueryDto } from '../dtos/pagination-query.dto';
 import { Paginated } from '../interfaces/paginated.interface';
-import { REQUEST } from '@nestjs/core';
-import { Request } from 'express';
 
 @Injectable()
 export class PaginationProvider {
-  constructor(@Inject(REQUEST) private readonly request: Request) {}
-
   public async paginateQuery<T>(
     paginationQuery: PaginationQueryDto,
-    prismaDelegate: any, // e.g. prisma.order, prisma.user
-    modelName: string,   // e.g. 'order', 'user'
+    prismaDelegate: any, // e.g. prisma.order
+    where?: any,         // optional dynamic filter
   ): Promise<Paginated<T>> {
     const limit = paginationQuery.limit ?? 10;
     const page = paginationQuery.page ?? 1;
@@ -21,10 +15,12 @@ export class PaginationProvider {
 
     const [results, totalItems] = await Promise.all([
       prismaDelegate.findMany({
+        where,
         skip,
         take: limit,
+        orderBy: { createdAt: 'desc' }, // optional default sort
       }),
-      prismaDelegate.count(),
+      prismaDelegate.count({ where }),
     ]);
 
     return {
