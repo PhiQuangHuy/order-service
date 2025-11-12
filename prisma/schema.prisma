@@ -29,3 +29,23 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
 }
+
+model Product {
+  id          String        @id @default(cuid())
+  name        String
+  description String?       @db.Text
+  price       Decimal       @db.Decimal(10, 2)
+  quantity    Int
+  sku         String?       @unique
+  status      ProductStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("products")
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  DISCONTINUED
+}
